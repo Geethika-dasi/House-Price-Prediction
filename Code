@@ -1,0 +1,317 @@
+# House Price Prediction Using Regression - Matching Resume Description
+# Developed ML model using Python (Pandas, NumPy, Scikit-learn) to estimate house prices 
+# based on size, location, and number (bedrooms)
+# Applied Linear Regression to predict continuous data
+# Evaluated performance using R² score and MSE
+# Gained experience in data preprocessing, model training, testing, and visualization
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import LabelEncoder
+import warnings
+warnings.filterwarnings('ignore')
+
+print("=" * 70)
+print("    HOUSE PRICE PREDICTION USING REGRESSION")
+print("    Estimating prices based on SIZE, LOCATION, and NUMBER of bedrooms")
+print("=" * 70)
+
+# ============================================================================
+# DATA PREPROCESSING SECTION
+# ============================================================================
+print("\n DATA PREPROCESSING")
+print("-" * 50)
+
+# Create realistic dataset matching your resume description
+np.random.seed(42)
+n_samples = 1200
+
+# Generate features as mentioned in resume: size, location, number (bedrooms)
+print("Creating dataset with features: SIZE, LOCATION, NUMBER (bedrooms)")
+
+# 1. SIZE - House size in square feet
+house_size = np.random.normal(2000, 500, n_samples)
+house_size = np.clip(house_size, 1000, 4000).astype(int)
+
+# 2. LOCATION - Different neighborhoods/areas (categorical data)
+locations = ['Downtown', 'Suburb_A', 'Suburb_B', 'Uptown', 'Riverside', 'Hills']
+location = np.random.choice(locations, n_samples)
+
+# 3. NUMBER - Number of bedrooms
+number_bedrooms = np.random.choice([2, 3, 4, 5], n_samples, p=[0.2, 0.4, 0.3, 0.1])
+
+# Create realistic prices based on these features
+location_multiplier = {
+    'Downtown': 1.3, 'Uptown': 1.2, 'Hills': 1.25, 
+    'Riverside': 1.1, 'Suburb_A': 1.0, 'Suburb_B': 0.95
+}
+
+base_price = 150000
+prices = []
+for i in range(n_samples):
+    price = (base_price + 
+             house_size[i] * 75 +  # $75 per sq ft
+             number_bedrooms[i] * 20000 +  # $20k per bedroom
+             np.random.normal(0, 15000))  # random variation
+    price *= location_multiplier[location[i]]  # location effect
+    prices.append(max(80000, int(price)))  # minimum price floor
+
+# Create DataFrame using Pandas
+df = pd.DataFrame({
+    'Size': house_size,
+    'Location': location,
+    'Number_Bedrooms': number_bedrooms,
+    'Price': prices
+})
+
+print(f" Dataset created with {len(df)} samples")
+print(f" Using Pandas for data manipulation")
+print("\nDataset preview:")
+print(df.head())
+
+print("\nDataset info:")
+print(f"- Size range: {df['Size'].min():,} - {df['Size'].max():,} sq ft")
+print(f"- Locations: {df['Location'].unique()}")
+print(f"- Bedrooms: {df['Number_Bedrooms'].min()} - {df['Number_Bedrooms'].max()}")
+print(f"- Price range: ${df['Price'].min():,} - ${df['Price'].max():,}")
+
+# Data preprocessing - handle categorical data (Location)
+print("\n Preprocessing categorical data (Location)...")
+label_encoder = LabelEncoder()
+df['Location_Encoded'] = label_encoder.fit_transform(df['Location'])
+
+print(" Location encoded using LabelEncoder:")
+for i, loc in enumerate(label_encoder.classes_):
+    print(f"   {loc} → {i}")
+
+# ============================================================================
+# DATA VISUALIZATION USING MATPLOTLIB
+# ============================================================================
+print("\n DATA VISUALIZATION USING MATPLOTLIB")
+print("-" * 50)
+
+# Create visualizations to understand data patterns
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle('House Price Analysis - Data Visualization', fontsize=16, fontweight='bold')
+
+# 1. Size vs Price relationship
+axes[0, 0].scatter(df['Size'], df['Price'], alpha=0.6, color='blue', s=30)
+axes[0, 0].set_title('Price vs Size (Square Feet)')
+axes[0, 0].set_xlabel('House Size (sq ft)')
+axes[0, 0].set_ylabel('Price ($)')
+axes[0, 0].grid(True, alpha=0.3)
+
+# 2. Location vs Price (boxplot style)
+location_prices = df.groupby('Location')['Price'].mean().sort_values(ascending=False)
+axes[0, 1].bar(range(len(location_prices)), location_prices.values, 
+               color=['red', 'green', 'blue', 'orange', 'purple', 'brown'])
+axes[0, 1].set_title('Average Price by Location')
+axes[0, 1].set_xlabel('Location')
+axes[0, 1].set_ylabel('Average Price ($)')
+axes[0, 1].set_xticks(range(len(location_prices)))
+axes[0, 1].set_xticklabels(location_prices.index, rotation=45)
+
+# 3. Number of bedrooms vs Price
+bedroom_prices = df.groupby('Number_Bedrooms')['Price'].mean()
+axes[1, 0].bar(bedroom_prices.index, bedroom_prices.values, 
+               color=['lightblue', 'lightgreen', 'lightyellow', 'lightpink'])
+axes[1, 0].set_title('Price vs Number of Bedrooms')
+axes[1, 0].set_xlabel('Number of Bedrooms')
+axes[1, 0].set_ylabel('Average Price ($)')
+
+# 4. Price distribution
+axes[1, 1].hist(df['Price'], bins=40, color='skyblue', alpha=0.7, edgecolor='black')
+axes[1, 1].set_title('Distribution of House Prices')
+axes[1, 1].set_xlabel('Price ($)')
+axes[1, 1].set_ylabel('Frequency')
+
+plt.tight_layout()
+plt.show()
+
+print(" Data visualization completed using Matplotlib")
+
+# ============================================================================
+# MODEL TRAINING AND TESTING
+# ============================================================================
+print("\n MODEL TRAINING AND TESTING")
+print("-" * 50)
+
+# Prepare features and target for machine learning
+X = df[['Size', 'Location_Encoded', 'Number_Bedrooms']]  # Features
+y = df['Price']  # Target (continuous data)
+
+print("Features selected for prediction:")
+print("- Size: House size in square feet")
+print("- Location_Encoded: Neighborhood (encoded as numbers)")
+print("- Number_Bedrooms: Number of bedrooms")
+print("Target: Price (continuous data)")
+
+# Split data for training and testing
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+print(f"\n Training set: {len(X_train)} samples")
+print(f" Testing set: {len(X_test)} samples")
+
+# Apply Linear Regression to predict continuous data
+print("\n Applying Linear Regression for continuous data prediction...")
+model = LinearRegression()
+
+# Model training
+print("Training the model...")
+model.fit(X_train, y_train)
+print(" Model training completed!")
+
+# Model testing
+print("Testing the model...")
+y_train_pred = model.predict(X_train)
+y_test_pred = model.predict(X_test)
+
+print(" Model testing completed!")
+
+# ============================================================================
+# MODEL EVALUATION USING R² SCORE AND MSE
+# ============================================================================
+print("\n MODEL EVALUATION USING R² SCORE AND MSE")
+print("-" * 50)
+
+# Calculate R² score
+train_r2 = r2_score(y_train, y_train_pred)
+test_r2 = r2_score(y_test, y_test_pred)
+
+# Calculate MSE (Mean Squared Error)
+train_mse = mean_squared_error(y_train, y_train_pred)
+test_mse = mean_squared_error(y_test, y_test_pred)
+
+# Calculate RMSE for better interpretation
+train_rmse = np.sqrt(train_mse)
+test_rmse = np.sqrt(test_mse)
+
+print("PERFORMANCE METRICS:")
+print("=" * 40)
+print(f" R² Score (Training):  {train_r2:.4f} ({train_r2*100:.1f}% accuracy)")
+print(f" R² Score (Testing):   {test_r2:.4f} ({test_r2*100:.1f}% accuracy)")
+print(f" MSE (Training):       {train_mse:,.0f}")
+print(f" MSE (Testing):        {test_mse:,.0f}")
+print(f" RMSE (Training):      ${train_rmse:,.0f}")
+print(f" RMSE (Testing):       ${test_rmse:,.0f}")
+
+# Model coefficients interpretation
+print(f"\nModel learned these relationships:")
+print(f"- Each sq ft increases price by: ${model.coef_[0]:.0f}")
+print(f"- Location effect varies by: ${model.coef_[1]:.0f}")
+print(f"- Each bedroom increases price by: ${model.coef_[2]:.0f}")
+print(f"- Base price (intercept): ${model.intercept_:,.0f}")
+
+# ============================================================================
+# VISUALIZATION OF MODEL PERFORMANCE
+# ============================================================================
+print("\n VISUALIZING MODEL PERFORMANCE")
+print("-" * 50)
+
+# Create performance visualization
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle('Linear Regression Model Performance', fontsize=16, fontweight='bold')
+
+# 1. Actual vs Predicted (Training)
+axes[0, 0].scatter(y_train, y_train_pred, alpha=0.6, color='blue', s=30)
+axes[0, 0].plot([y_train.min(), y_train.max()], [y_train.min(), y_train.max()], 'r--', lw=2)
+axes[0, 0].set_title(f'Training: Actual vs Predicted\nR² = {train_r2:.3f}')
+axes[0, 0].set_xlabel('Actual Price ($)')
+axes[0, 0].set_ylabel('Predicted Price ($)')
+axes[0, 0].grid(True, alpha=0.3)
+
+# 2. Actual vs Predicted (Testing)
+axes[0, 1].scatter(y_test, y_test_pred, alpha=0.6, color='green', s=30)
+axes[0, 1].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
+axes[0, 1].set_title(f'Testing: Actual vs Predicted\nR² = {test_r2:.3f}')
+axes[0, 1].set_xlabel('Actual Price ($)')
+axes[0, 1].set_ylabel('Predicted Price ($)')
+axes[0, 1].grid(True, alpha=0.3)
+
+# 3. Feature importance (coefficients)
+features = ['Size (sq ft)', 'Location', 'Bedrooms']
+coefficients = np.abs(model.coef_)
+axes[1, 0].bar(features, coefficients, color=['skyblue', 'lightcoral', 'lightgreen'])
+axes[1, 0].set_title('Feature Importance (|Coefficients|)')
+axes[1, 0].set_ylabel('Absolute Coefficient Value')
+axes[1, 0].tick_params(axis='x', rotation=45)
+
+# 4. Residuals plot
+residuals = y_test - y_test_pred
+axes[1, 1].scatter(y_test_pred, residuals, alpha=0.6, color='purple', s=30)
+axes[1, 1].axhline(y=0, color='red', linestyle='--')
+axes[1, 1].set_title('Residuals Plot (Testing)')
+axes[1, 1].set_xlabel('Predicted Price ($)')
+axes[1, 1].set_ylabel('Residuals ($)')
+axes[1, 1].grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+# ============================================================================
+# MAKING PREDICTIONS FOR NEW HOUSES
+# ============================================================================
+print("\n MAKING PREDICTIONS FOR NEW HOUSES")
+print("-" * 50)
+
+# Example predictions matching your resume description
+example_houses = [
+    [2200, 0, 3],  # 2200 sq ft, Downtown (0), 3 bedrooms
+    [1800, 2, 4],  # 1800 sq ft, Suburb_B (2), 4 bedrooms  
+    [2800, 5, 4],  # 2800 sq ft, Hills (5), 4 bedrooms
+]
+
+location_names = label_encoder.classes_
+
+print("Predicting prices for new houses:")
+print("=" * 40)
+
+for i, house in enumerate(example_houses, 1):
+    predicted_price = model.predict([house])[0]
+    
+    print(f"\nHouse {i}:")
+    print(f"  Size: {house[0]:,} sq ft")
+    print(f"  Location: {location_names[house[1]]}")
+    print(f"  Bedrooms: {house[2]}")
+    print(f"   Predicted Price: ${predicted_price:,.0f}")
+
+# ============================================================================
+# PROJECT SUMMARY
+# ============================================================================
+print("\n" + "=" * 70)
+print("                         PROJECT SUMMARY")
+print("=" * 70)
+print(" Developed ML model using Python (Pandas, NumPy, Scikit-learn)")
+print(" Estimated house prices based on SIZE, LOCATION, and NUMBER (bedrooms)")
+print(" Applied Linear Regression to predict continuous data (prices)")
+print(f" Evaluated performance using R² score ({test_r2:.3f}) and MSE ({test_mse:,.0f})")
+print(" Gained experience in data preprocessing (encoding categorical data)")
+print(" Performed model training and testing with train-test split")
+print(" Created visualizations using Matplotlib for data analysis")
+
+print("\n KEY ACHIEVEMENTS:")
+print(f"• Model accuracy: {test_r2*100:.1f}% (R² score)")
+print(f"• Average prediction error: ${test_rmse:,.0f} (RMSE)")
+print("• Successfully handled continuous target variable (prices)")
+print("• Processed both numerical (size, bedrooms) and categorical (location) features")
+print("• Created comprehensive data visualizations")
+
+print("\n TECHNICAL SKILLS DEMONSTRATED:")
+print("• Python programming for data science")
+print("• Pandas for data manipulation and preprocessing")
+print("• NumPy for numerical computations")
+print("• Scikit-learn for machine learning implementation")
+print("• Linear Regression for predicting continuous variables")
+print("• Model evaluation using R² score and MSE metrics")
+print("• Data visualization using Matplotlib")
+print("• Categorical data encoding techniques")
+
+print("\n" + "=" * 70)
+print("    Ready to discuss this project in your interview! ")
+print("=" * 70)
